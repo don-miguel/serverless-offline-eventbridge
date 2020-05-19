@@ -157,7 +157,7 @@ class ServerlessOfflineEventbridge {
             timeout: 0,
             headers: {
                 "Content-Type": "application/json; charset=UTF-8",
-                "Content-Length": Buffer.byteLength(JSON.stringify(fn)),
+                "Content-Length": Buffer.byteLength(JSON.stringify(fn)).toString(),
             },
         }).then(res => res.json())
         this.subscriptions.push(...result)
