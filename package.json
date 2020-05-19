@@ -8,7 +8,6 @@
     "watch": "tsc -p src -w",
     "test": "nyc ts-mocha \"test/**/*.ts\" -p src/",
     "lint": "tslint -p src/",
-    "postinstall": "npm i",
     "prepare": "npm run build"
   },
   "author": "",
