@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@types/node": "^14.0.1",
-    "aws-sdk": "^2.403.0",
+    "aws-sdk": "^2.675.0",
     "body-parser": "^1.18.2",
     "cors": "^2.8.4",
     "express": "^4.15.4",
