@@ -1,0 +1,32 @@
+{
+  "name": "serverless-offline-eventbridge",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p src",
+    "watch": "tsc -p src -w",
+    "test": "nyc ts-mocha \"test/**/*.ts\" -p src/",
+    "lint": "tslint -p src/",
+    "prepare": "npm run build"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/aws-sdk": "^2.7.0",
+    "@types/express": "^4.17.6",
+    "@types/lodash": "^4.14.151",
+    "typescript": "^3.9.2"
+  },
+  "dependencies": {
+    "@types/node": "^14.0.1",
+    "aws-sdk": "^2.403.0",
+    "body-parser": "^1.18.2",
+    "cors": "^2.8.4",
+    "express": "^4.15.4",
+    "lodash": "^4.17.15",
+    "node-fetch": "^2.6.0",
+    "promise-async": "^0.2.0",
+    "uuid": "^8.0.0"
+  }
+}
