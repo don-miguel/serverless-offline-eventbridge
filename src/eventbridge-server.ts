@@ -1,10 +1,10 @@
 import * as _ from "lodash";
 import { v4 as uuid } from "uuid";
-import { Lambda } from 'aws-sdk';
+import { Lambda, EventBridge } from 'aws-sdk';
 
 
 export class EventBridgeServer {
-    private subscriptions: {[subscriptionId: string]: any} = {}
+    private rules: {[ruleId: string]: any} = {}
     private pluginDebug: (msg, context) => void;
     private port: number;
     private server: any;
@@ -20,22 +20,21 @@ export class EventBridgeServer {
     }
 
     public routes() {
-        this.debug("configuring routes");
+        this.debug("Configuring routes");
         this.app.use((req, res, next) => {
             res.header("Access-Control-Allow-Origin", "*");
             res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
             next();
         });
-        this.app.get("/subscriptions", (req, res) => {
-            res.json({status: 200, body: _.values(this.subscriptions)})
+        this.app.get("/rules", (req, res) => {
+            res.json({status: 200, body: _.values(this.rules)})
         })
-        this.app.delete("/subscriptions/:subscriptionId", (req, res) => {
-            this.debug("Removing Subscription: " + JSON.stringify(req.params.subscriptionId))
-            delete this.subscriptions[req.params.subscriptionId]
+        this.app.delete("/rules/:ruleId", (req, res) => {
+            this.debug("Deleting Rule: " + JSON.stringify(req.params.ruleId))
+            delete this.rules[req.params.ruleId]
             res.json({status: 200, body: "OK"})
         })
-        this.app.post("/subscriptions", (req, res) => {
-            this.debug("New Subscription: " + JSON.stringify(req.body.events))
+        this.app.post("/rules", (req, res) => {
 
             const events = req.body.events.filter(event => !!event.eventBridge).map(event => {
                 return {
@@ -45,12 +44,11 @@ export class EventBridgeServer {
                     lambdaPort: req.body.lambdaPort
                 }
             })
-            const results = events.map((event) => this.subscribe(event));
+            const results = events.map((event) => this.putRule(event));
             res.json(results)
         })
         this.app.all("/", async (req, res) => {
             const results = await Promise.all(_.map(req.body.Entries, async (event) => this.publishEvent(event)))
-            this.debug(JSON.stringify(results))
 
             res.json({
                 Entries: results.map(result => ({EventId: uuid(), triggeredInvocations: result})),
@@ -61,29 +59,37 @@ export class EventBridgeServer {
     }
 
     publishEvent(event) {
-        const matchedHandlers = _.filter(this.subscriptions, sub => this.matchForSubscription(sub)(event))
-        return Promise.all(matchedHandlers.map(subscription => {
-            const lambda = new Lambda({endpoint: "http://localhost:" + subscription.lambdaPort})
+        const matchedHandlers = _.filter(this.rules, rule => this.shouldTrigger(rule, event))
+        return Promise.all(matchedHandlers.map(rule => {
+            const lambda = new Lambda({endpoint: "http://localhost:" + rule.lambdaPort})
             return lambda.invoke({
-                FunctionName: subscription.function,
+                FunctionName: rule.function,
                 InvocationType: 'RequestResponse',
                 Payload: JSON.stringify(event),
-            }).promise().then(res => ({body: JSON.parse(res.$response.httpResponse.body.toString()), function: subscription.function}))
+            }).promise().then(res => ({...JSON.parse(res.$response.httpResponse.body.toString()), function: rule.function}))
         }))
     }
 
-    matchForSubscription(subscription) {
-        const p: any = {..._.reduce(subscription.pattern, (result, obj, key) => {
-            return {...result, [_.capitalize(key)]: obj}
-        }, {}), EventBusName: subscription.eventBus}
-        return (event) => {
-            return p.Source.includes(event.Source) && p.EventBusName === event.EventBusName && (!p["Detail-type"] || p["Detail-type"].includes(event.DetailType))
+    shouldTrigger(rule, event) {
+        const formatted = {...event, Detail: JSON.parse(event.Detail)}
+        const pattern: any = {...rule.pattern,EventBusName: rule.eventBus}
+        
+        const recursiveMatch = (o, s) => {
+            if(Array.isArray(s)) {
+                return s.includes(o)
+            }else if(typeof s == 'string'){
+                return o == s
+            }else {
+                return _.isMatchWith(o, s, recursiveMatch)
+            }
         }
+
+        return _.isMatchWith(formatted, pattern, recursiveMatch) && pattern.EventBusName == formatted.EventBusName
     }
 
-    subscribe(subscriptionConfig: any) {
+    putRule(ruleConfig: any) {
         const uid = uuid();
-        this.subscriptions[uid] = subscriptionConfig
+        this.rules[uid] = ruleConfig
         return uid
     }
 

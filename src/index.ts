@@ -20,7 +20,7 @@ class ServerlessOfflineEventbridge {
     accountId: string;
     eventbridgeServer: EventBridgeServer;
     private server: any;
-    subscriptions: any[] = []
+    rules: any[] = []
 
     constructor(private serverless: any, private options: any) {
         this.app = express();
@@ -66,7 +66,7 @@ class ServerlessOfflineEventbridge {
             },
             "offline-eventbridge:cleanup:init": async () => {
                 this.init();
-                return this.unsubscribeAll();
+                return this.deleteRules();
             },
             "offline-eventbridge:start:end": () => this.stop(),
         };
@@ -93,7 +93,7 @@ class ServerlessOfflineEventbridge {
         if (this.server) {
             this.server.close();
         }
-        await this.unsubscribeAll()
+        await this.deleteRules()
     }
 
     init() {
@@ -126,7 +126,6 @@ class ServerlessOfflineEventbridge {
             this.server.setTimeout(0);
             this.server.on('error', (e) => {
                 if (e.code === 'EADDRINUSE') {
-                //   this.log(`ADDRESS IN USE: ${JSON.stringify(e, null, 2)}`)
                   res()
                 }
             });
@@ -138,17 +137,17 @@ class ServerlessOfflineEventbridge {
         await Promise.all(Object.keys(this.serverless.service.functions).map(fnName => {
             const fn = this.serverless.service.functions[fnName];
             return Promise.all(fn.events.filter(event => event.eventBridge != null).map(event => {
-                return this.subscribe(fnName);
+                return this.putRule(fnName);
             }));
         }));
     }
 
-    public async subscribe(fnName) {
+    public async putRule(fnName) {
         const lambdaPort = this.serverless.service.custom['serverless-offline'].lambdaPort
         if(!lambdaPort) throw "lambdaPort not defined for serverless-offline. EventBridge won't know where to call it"
         const fn = this.serverless.service.functions[fnName];
 
-        const result = await fetch(`http://${this.config.host}:${this.localPort}/subscriptions`, {
+        const result = await fetch(`http://${this.config.host}:${this.localPort}/rules`, {
             method: "POST",
             body: JSON.stringify({
                 ...fn,
@@ -160,13 +159,13 @@ class ServerlessOfflineEventbridge {
                 "Content-Length": Buffer.byteLength(JSON.stringify(fn)).toString(),
             },
         }).then(res => res.json())
-        this.subscriptions.push(...result)
-        this.debug(`Subscribed Function: ${fn.name} @ port ${lambdaPort}`)
+        this.rules.push(...result)
+        this.debug(`Put Rule for Function: ${fn.name} @ port ${lambdaPort}`)
     }
 
-    async unsubscribeAll() {
-        await Promise.all(_.map(_.flatten(this.subscriptions), subscription => {
-            return fetch(`http://${this.config.host || "localhost"}:${this.localPort}/subscriptions/${subscription}`, {
+    async deleteRules() {
+        await Promise.all(_.map(_.flatten(this.rules), subscription => {
+            return fetch(`http://${this.config.host || "localhost"}:${this.localPort}/rules/${subscription}`, {
                 method: "DELETE",
                 timeout: 0
             })
