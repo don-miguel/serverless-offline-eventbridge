@@ -59,7 +59,10 @@ export class EventBridgeServer {
     }
 
     publishEvent(event) {
-        const matchedHandlers = _.filter(this.rules, rule => this.shouldTrigger(rule, event))
+        const transformedKeys = _.reduce(event, (res, item, key) => {
+            return {...res, [_.kebabCase(key)]: item}
+        }, {})
+        const matchedHandlers = _.filter(this.rules, rule => this.shouldTrigger(rule, transformedKeys))
         return Promise.all(matchedHandlers.map(rule => {
             const lambda = new Lambda({endpoint: "http://localhost:" + rule.lambdaPort})
             return lambda.invoke({
