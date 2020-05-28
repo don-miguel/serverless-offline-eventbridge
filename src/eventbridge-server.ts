@@ -59,9 +59,10 @@ export class EventBridgeServer {
     }
 
     publishEvent(event) {
-        const transformedKeys = _.reduce(event, (res, item, key) => {
+        const transformedKeys: any = _.reduce(event, (res, item, key) => {
             return {...res, [_.kebabCase(key)]: item}
         }, {})
+        const payload = {...transformedKeys, detail: JSON.parse(transformedKeys.detail)}
 
         const matchedHandlers = _.filter(this.rules, rule => this.shouldTrigger(rule, transformedKeys))
         return Promise.all(matchedHandlers.map(rule => {
@@ -69,7 +70,7 @@ export class EventBridgeServer {
             return lambda.invoke({
                 FunctionName: rule.function,
                 InvocationType: 'RequestResponse',
-                Payload: JSON.stringify(event),
+                Payload: JSON.stringify(payload),
             }).promise().then(res => ({...JSON.parse(res.$response.httpResponse.body.toString()), function: rule.function}))
         }))
     }
