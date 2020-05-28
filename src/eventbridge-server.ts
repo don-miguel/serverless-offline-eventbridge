@@ -62,6 +62,7 @@ export class EventBridgeServer {
         const transformedKeys = _.reduce(event, (res, item, key) => {
             return {...res, [_.kebabCase(key)]: item}
         }, {})
+
         const matchedHandlers = _.filter(this.rules, rule => this.shouldTrigger(rule, transformedKeys))
         return Promise.all(matchedHandlers.map(rule => {
             const lambda = new Lambda({endpoint: "http://localhost:" + rule.lambdaPort})
@@ -74,9 +75,9 @@ export class EventBridgeServer {
     }
 
     shouldTrigger(rule, event) {
-        const formatted = {...event, Detail: JSON.parse(event.Detail)}
-        const pattern: any = {...rule.pattern,EventBusName: rule.eventBus}
-        
+        const formatted = {...event, detail: JSON.parse(event.detail)}
+        const pattern: any = {...rule.pattern, "event-bus-name": rule.eventBus}
+
         const recursiveMatch = (o, s) => {
             if(Array.isArray(s)) {
                 return s.includes(o)
@@ -87,7 +88,7 @@ export class EventBridgeServer {
             }
         }
 
-        return _.isMatchWith(formatted, pattern, recursiveMatch) && pattern.EventBusName == formatted.EventBusName
+        return _.isMatchWith(formatted, pattern, recursiveMatch)
     }
 
     putRule(ruleConfig: any) {
