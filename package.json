@@ -1,6 +1,6 @@
 {
   "name": "serverless-offline-eventbridge",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Mock event bridge for serverless offline",
   "main": "dist/index.js",
   "scripts": {
