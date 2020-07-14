@@ -71,7 +71,7 @@ export class EventBridgeServer {
                 FunctionName: rule.function,
                 InvocationType: 'RequestResponse',
                 Payload: JSON.stringify(payload),
-            }).promise().then(res => ({...JSON.parse(res.$response.httpResponse.body.toString()), function: rule.function}))
+            }).promise().then(res => ({...JSON.parse(res.$response.httpResponse.body.toString()), function: rule.function})).catch(err => err)
         }))
     }
 
