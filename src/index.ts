@@ -115,7 +115,7 @@ class ServerlessOfflineEventbridge {
 
     public async listen() {
         let host = this.config.host;
-        return new Promise(res => {
+        return new Promise<void>(res => {
             this.server = this.app.listen({
                 port: this.localPort,
                 host
@@ -175,7 +175,7 @@ class ServerlessOfflineEventbridge {
     }
 
     public async waitForSigint() {
-        return new Promise(res => {
+        return new Promise<void>(res => {
             process.on("SIGINT", () => {
                 this.log("Halting offline-eventbridge server");
                 res();
